@@ -43,7 +43,8 @@ export default function App() {
         const startX = col * cellWidth;
         const startY = row * cellHeight;
 
-        const locationCode = `${prefix.trim()}-${(i + 1).toString().padStart(2, '0')}`;
+        const prefixPart = `${prefix.trim()}-`;
+        const numberPart = `${i + 1}`;
         
         // Cell Border
         doc.setDrawColor(200); // Light gray for cutting lines
@@ -56,12 +57,28 @@ export default function App() {
         doc.setLineWidth(0.5);
         doc.rect(startX + padding, startY + padding, cellWidth - (padding * 2), cellHeight - (padding * 2));
 
-        // Location Code - Much larger
-        doc.setFontSize(80);
+        // Calculate total width for centering
         doc.setFont('helvetica', 'bold');
-        const textWidth = doc.getTextWidth(locationCode);
-        // Center vertically and horizontally
-        doc.text(locationCode, startX + (cellWidth - textWidth) / 2, startY + (cellHeight / 2) - 5);
+        doc.setFontSize(60);
+        const prefixWidth = doc.getTextWidth(prefixPart);
+        
+        doc.setFont('helvetica', 'bolditalic');
+        doc.setFontSize(50);
+        const numberWidth = doc.getTextWidth(numberPart);
+        
+        const totalWidth = prefixWidth + numberWidth;
+        const startTextX = startX + (cellWidth - totalWidth) / 2;
+        const baselineY = startY + (cellHeight / 2) - 5;
+
+        // Draw Prefix
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(60);
+        doc.text(prefixPart, startTextX, baselineY);
+
+        // Draw Number (Smaller and Italic)
+        doc.setFont('helvetica', 'bolditalic');
+        doc.setFontSize(50);
+        doc.text(numberPart, startTextX + prefixWidth, baselineY);
 
         // Date - Bold and split sizes
         doc.setFont('helvetica', 'bold');
@@ -162,7 +179,7 @@ export default function App() {
               {prefix ? (
                 [1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                   <span key={num} className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium border border-blue-100">
-                    {prefix}-{num.toString().padStart(2, '0')}
+                    {prefix}-<span className="italic text-[0.9em]">{num}</span>
                   </span>
                 ))
               ) : (

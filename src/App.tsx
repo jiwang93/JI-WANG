@@ -26,92 +26,81 @@ export default function App() {
       });
 
       const now = new Date();
-      const year = now.getFullYear().toString();
-      const monthDay = `${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')}`;
+      const dateStr = `${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')}/${now.getFullYear()}`;
 
       const pageWidth = 210;
       const pageHeight = 297;
-      const cols = 3;
-      const rows = 3;
-      const cellWidth = pageWidth / cols;
-      const cellHeight = pageHeight / rows;
+      const labelsPerPage = 3;
+      const totalLabels = 9;
+      const cellWidth = pageWidth;
+      const cellHeight = pageHeight / labelsPerPage;
 
-      for (let i = 0; i < 9; i++) {
-        const col = i % cols;
-        const row = Math.floor(i / rows);
-        
-        const startX = col * cellWidth;
-        const startY = row * cellHeight;
+      for (let i = 0; i < totalLabels; i++) {
+        // Add new page if needed (except for the first label)
+        if (i > 0 && i % labelsPerPage === 0) {
+          doc.addPage();
+        }
+
+        const rowOnPage = i % labelsPerPage;
+        const startX = 0;
+        const startY = rowOnPage * cellHeight;
 
         const prefixPart = `${prefix.trim()}-`;
         const numberPart = `${i + 1}`;
         
         // Cell Border
-        doc.setDrawColor(200); // Light gray for cutting lines
+        doc.setDrawColor(200);
         doc.setLineWidth(0.1);
         doc.rect(startX, startY, cellWidth, cellHeight);
 
         // Inner Border (Padding)
-        const padding = 5;
+        const padding = 8;
         doc.setDrawColor(0);
-        doc.setLineWidth(0.5);
+        doc.setLineWidth(1.0);
         doc.rect(startX + padding, startY + padding, cellWidth - (padding * 2), cellHeight - (padding * 2));
 
-        // Calculate total width for centering
+        // Much larger font sizes to fill the space
+        const mainFontSize = 140;
+        const subFontSize = 120;
+
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(60);
+        doc.setFontSize(mainFontSize);
         const prefixWidth = doc.getTextWidth(prefixPart);
         
         doc.setFont('helvetica', 'bolditalic');
-        doc.setFontSize(50);
+        doc.setFontSize(subFontSize);
         const numberWidth = doc.getTextWidth(numberPart);
         
         const totalWidth = prefixWidth + numberWidth;
         const startTextX = startX + (cellWidth - totalWidth) / 2;
-        const baselineY = startY + (cellHeight / 2) - 5;
+        const baselineY = startY + (cellHeight / 2) + 2; // Adjusted for larger text
 
         // Draw Prefix
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(60);
+        doc.setFontSize(mainFontSize);
         doc.text(prefixPart, startTextX, baselineY);
 
         // Draw Number (Smaller and Italic)
         doc.setFont('helvetica', 'bolditalic');
-        doc.setFontSize(50);
+        doc.setFontSize(subFontSize);
         doc.text(numberPart, startTextX + prefixWidth, baselineY);
 
-        // Date - Bold and split sizes
+        // Date - Uniform large size and MM/DD/YYYY format
+        const dateFontSize = 45;
         doc.setFont('helvetica', 'bold');
-        
-        // Month/Day - Large
-        doc.setFontSize(28);
-        const mdWidth = doc.getTextWidth(monthDay);
-        
-        // Year - Smaller
-        doc.setFontSize(16);
-        const yWidth = doc.getTextWidth(year);
-        
-        const totalDateWidth = mdWidth + yWidth + 2; // 2mm spacing
-        const dateStartX = startX + (cellWidth - totalDateWidth) / 2;
-        const dateBaselineY = startY + (cellHeight / 2) + 25;
+        doc.setFontSize(dateFontSize);
+        const dateWidth = doc.getTextWidth(dateStr);
+        const dateStartX = startX + (cellWidth - dateWidth) / 2;
+        const dateBaselineY = startY + (cellHeight / 2) + 38;
 
-        // Draw Year (Smaller)
-        doc.setFontSize(16);
-        doc.text(year, dateStartX, dateBaselineY);
-        
-        // Draw Separator or just space
-        doc.setFontSize(28);
-        doc.text('/', dateStartX + yWidth + 1, dateBaselineY);
-        
-        // Draw Month/Day (Larger)
-        doc.text(monthDay.replace('/', ''), dateStartX + yWidth + 5, dateBaselineY);
+        doc.text(dateStr, dateStartX, dateBaselineY);
         
         // Decorative line - Thicker and wider
-        doc.setLineWidth(0.5);
-        doc.line(startX + padding + 5, startY + (cellHeight / 2) + 8, startX + cellWidth - padding - 5, startY + (cellHeight / 2) + 8);
+        doc.setLineWidth(1.0);
+        doc.line(startX + padding + 10, startY + (cellHeight / 2) + 15, startX + cellWidth - padding - 10, startY + (cellHeight / 2) + 15);
       }
 
-      doc.save(`库位标签_一页_${prefix.trim()}.pdf`);
+      doc.save(`库位标签_巨无霸版_${prefix.trim()}.pdf`);
       setIsGenerating(false);
     }, 800);
   };

@@ -1,0 +1,5 @@
+{
+  "name": "库位标签生成器",
+  "description": "输入库位前缀，自动生成包含1-9个库位编号及日期的PDF标签。",
+  "requestFramePermissions": []
+}

@@ -9,15 +9,22 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Printer, Download, Package, Calendar, ArrowRight } from 'lucide-react';
 
 export default function App() {
-  const [prefix, setPrefix] = useState('');
+  const [selectedName, setSelectedName] = useState('');
+  const [numTrucks, setNumTrucks] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const locationOptions = ['WAAR', 'JINKO', 'CIM', 'EN3'];
+
+  const handleNameSelect = (name: string) => {
+    setSelectedName(name);
+  };
+
   const generatePDF = () => {
-    if (!prefix.trim()) return;
+    if (!selectedName) return;
     
     setIsGenerating(true);
     
-    // Small delay to show animation
+    // Small delay to allow UI to update to "Generating" state
     setTimeout(() => {
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -25,29 +32,35 @@ export default function App() {
         format: 'a4'
       });
 
-      const now = new Date();
-      const dateStr = `${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')}/${now.getFullYear()}`;
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dateStr = `${(tomorrow.getMonth() + 1).toString().padStart(2, '0')}/${tomorrow.getDate().toString().padStart(2, '0')}/${tomorrow.getFullYear()}`;
 
       const pageWidth = 210;
       const pageHeight = 297;
       const labelsPerPage = 3;
-      const totalLabels = 9;
       const cellWidth = pageWidth;
       const cellHeight = pageHeight / labelsPerPage;
 
+      const levelsToGenerate = numTrucks;
+      const labelsPerLevel = 9;
+      const totalLabels = levelsToGenerate * labelsPerLevel;
+
       for (let i = 0; i < totalLabels; i++) {
-        // Add new page if needed (except for the first label)
-        if (i > 0 && i % labelsPerPage === 0) {
+        const rowOnPage = i % labelsPerPage;
+
+        if (i > 0 && rowOnPage === 0) {
           doc.addPage();
         }
-
-        const rowOnPage = i % labelsPerPage;
+        
         const startX = 0;
         const startY = rowOnPage * cellHeight;
 
-        const prefixPart = `${prefix.trim()}-`;
-        const numberPart = `${i + 1}`;
-        
+        const currentLevel = Math.floor(i / labelsPerLevel) + 1;
+        const currentLabelNum = (i % labelsPerLevel) + 1;
+        const customerPart = selectedName;
+        const numberGroupPart = `${currentLevel}-${currentLabelNum}`;
+
         // Cell Border
         doc.setDrawColor(200);
         doc.setLineWidth(0.1);
@@ -56,38 +69,48 @@ export default function App() {
         // Inner Border (Padding)
         const padding = 8;
         doc.setDrawColor(0);
-        doc.setLineWidth(1.0);
+        doc.setLineWidth(1);
         doc.rect(startX + padding, startY + padding, cellWidth - (padding * 2), cellHeight - (padding * 2));
 
-        // Much larger font sizes to fill the space
-        const mainFontSize = 140;
-        const subFontSize = 120;
+        // Font Sizes - Maximum contrast for clear distinction
+        const customerFontSize = 160;
+        const numberGroupFontSize = 80;
 
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(mainFontSize);
-        const prefixWidth = doc.getTextWidth(prefixPart);
+        // Use different fonts to differentiate
+        // Customer: Times Bold Italic (Marker/Handwritten look)
+        // Numbers: Helvetica Normal (Clean and much smaller)
         
-        doc.setFont('helvetica', 'bolditalic');
-        doc.setFontSize(subFontSize);
-        const numberWidth = doc.getTextWidth(numberPart);
+        doc.setDrawColor(0);
+
+        // Measure widths
+        doc.setFont('times', 'bolditalic');
+        doc.setFontSize(customerFontSize);
+        const nameWidth = doc.getTextWidth(customerPart);
         
-        const totalWidth = prefixWidth + numberWidth;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(numberGroupFontSize);
+        const numWidth = doc.getTextWidth(numberGroupPart);
+        
+        const gap = 15; // Increased gap for better distinction
+        const totalWidth = nameWidth + numWidth + gap;
         const startTextX = startX + (cellWidth - totalWidth) / 2;
-        const baselineY = startY + (cellHeight / 2) + 2; // Adjusted for larger text
+        const baselineY = startY + (cellHeight / 2) + 5;
 
-        // Draw Prefix
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(mainFontSize);
-        doc.text(prefixPart, startTextX, baselineY);
+        // Draw Customer Name (Scribbly Marker feel)
+        doc.setFont('times', 'bolditalic');
+        doc.setFontSize(customerFontSize);
+        doc.setLineWidth(1.5); 
+        doc.text(customerPart, startTextX, baselineY, { renderingMode: 'fillThenStroke' });
 
-        // Draw Number (Smaller and Italic)
-        doc.setFont('helvetica', 'bolditalic');
-        doc.setFontSize(subFontSize);
-        doc.text(numberPart, startTextX + prefixWidth, baselineY);
+        // Draw Numbers Group (Clean, small, non-bold contrast)
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(numberGroupFontSize);
+        doc.setLineWidth(0.1); // Fine stroke
+        doc.text(numberGroupPart, startTextX + nameWidth + gap, baselineY);
 
-        // Date - Uniform large size and MM/DD/YYYY format
-        const dateFontSize = 45;
-        doc.setFont('helvetica', 'bold');
+        // Date - Smaller and subtle to avoid competition
+        const dateFontSize = 35;
+        doc.setFont('helvetica', 'normal');
         doc.setFontSize(dateFontSize);
         const dateWidth = doc.getTextWidth(dateStr);
         const dateStartX = startX + (cellWidth - dateWidth) / 2;
@@ -95,14 +118,16 @@ export default function App() {
 
         doc.text(dateStr, dateStartX, dateBaselineY);
         
-        // Decorative line - Thicker and wider
-        doc.setLineWidth(1.0);
-        doc.line(startX + padding + 10, startY + (cellHeight / 2) + 15, startX + cellWidth - padding - 10, startY + (cellHeight / 2) + 15);
+        // Decorative line - Thinner and subtler
+        doc.setLineWidth(1.2);
+        doc.setDrawColor(180); 
+        doc.line(startX + padding + 35, startY + (cellHeight / 2) + 12, startX + cellWidth - padding - 35, startY + (cellHeight / 2) + 12);
       }
 
-      doc.save(`库位标签_巨无霸版_${prefix.trim()}.pdf`);
+      const fileName = `${selectedName}_1-${numTrucks}辆卡车.pdf`;
+      doc.save(fileName);
       setIsGenerating(false);
-    }, 800);
+    }, 100);
   };
 
   return (
@@ -122,8 +147,8 @@ export default function App() {
               </div>
             </h1>
             <p className="mt-2 text-blue-100 opacity-90 text-sm">
-              快速生成 1-9 号库位标签 (单页版) <br/>
-              Quickly generate location labels 1-9 (Single Page)
+              快速生成 1-9 号库位标签 (每页 3 个) <br/>
+              Quickly generate location labels 1-9 (3 per page)
             </p>
           </div>
           <motion.div 
@@ -140,48 +165,48 @@ export default function App() {
 
         <div className="p-8 space-y-6">
           <div>
-            <label htmlFor="prefix" className="block text-sm font-medium text-slate-700 mb-2">
-              库位前缀 / Location Prefix (e.g., D)
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              客户名称 / Customer Name
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                id="prefix"
-                value={prefix}
-                onChange={(e) => setPrefix(e.target.value.toUpperCase())}
-                placeholder="输入字母或数字 / Enter prefix"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-lg font-semibold uppercase"
-                maxLength={10}
-              />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                <ArrowRight size={20} />
-              </div>
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {locationOptions.map((option) => (
+                <button
+                  key={option}
+                  onClick={() => handleNameSelect(option)}
+                  className={`py-3 px-4 rounded-xl font-bold text-lg transition-all border-2 ${
+                    selectedName === option
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400'
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
             </div>
-          </div>
 
-          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1">
-              <Calendar size={14} />
-              预览 / Preview (3x3 Layout)
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {prefix ? (
-                [1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                  <span key={num} className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium border border-blue-100">
-                    {prefix}-<span className="italic text-[0.9em]">{num}</span>
-                  </span>
-                ))
-              ) : (
-                <span className="text-slate-400 text-sm italic">请输入前缀 / Please enter prefix</span>
-              )}
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              卡车数量 / Number of Trucks
+            </label>
+            <div className="flex items-center gap-4 mb-6">
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={numTrucks}
+                onChange={(e) => setNumTrucks(parseInt(e.target.value) || 1)}
+                className="w-24 px-4 py-3 bg-slate-200 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-lg font-bold"
+              />
+              <span className="text-slate-500 text-sm">
+                将生成 {selectedName || '卡车'}{1}-1 到 {selectedName || '卡车'}{numTrucks}-9 的标签
+              </span>
             </div>
           </div>
 
           <button
             onClick={generatePDF}
-            disabled={!prefix.trim() || isGenerating}
+            disabled={!selectedName || isGenerating}
             className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
-              !prefix.trim() || isGenerating
+              !selectedName || isGenerating
                 ? 'bg-slate-300 cursor-not-allowed shadow-none'
                 : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98]'
             }`}
@@ -205,8 +230,8 @@ export default function App() {
           </button>
 
           <p className="text-center text-[10px] text-slate-400 leading-relaxed">
-            生成的 PDF 将包含 1 页，内含 9 个库位标签 (3x3 布局)<br/>
-            PDF will contain 1 page with 9 labels (3x3 Grid)
+            生成的 PDF 将包含 3 页，每页 3 个库位标签<br/>
+            PDF will contain 3 pages with 3 labels per page
           </p>
         </div>
       </motion.div>
